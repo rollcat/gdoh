@@ -65,15 +65,18 @@ func main() {
 		}
 		query = query[:n]
 
-		resp, err := dohClient.RawQuery(query)
-		if err != nil {
-			log.Print("query error:", err.Error())
-			// TODO: how to tell client we've got an error?
-			resp = []byte{0}
-		}
-		_, _, err = ln.WriteMsgUDP(resp, nil, addr)
-		if err != nil {
-			log.Print("write error:", err.Error())
-		}
+		go func(query []byte, addr *net.UDPAddr) {
+			var err error
+			resp, err := dohClient.RawQuery(query)
+			if err != nil {
+				log.Print("query error:", err.Error())
+				// TODO: how to tell client we've got an error?
+				resp = []byte{0}
+			}
+			_, _, err = ln.WriteMsgUDP(resp, nil, addr)
+			if err != nil {
+				log.Print("write error:", err.Error())
+			}
+		}(query, addr)
 	}
 }
