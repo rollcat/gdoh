@@ -31,11 +31,11 @@ func (c *DoHClient) RawQuery(query []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 	if r.StatusCode != 200 {
 		log.Printf("response: %#v", r)
 		return nil, ErrResolver
 	}
-	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
