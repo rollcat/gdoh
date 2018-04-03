@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 )
 
@@ -11,6 +13,9 @@ import (
 type DoHClient struct {
 	http.Client
 }
+
+// ErrResolver signifies an internal resolver error.
+var ErrResolver = errors.New("Resolver error")
 
 // RawQuery performs a raw DNS query, using the wire format.
 func (c *DoHClient) RawQuery(query []byte) ([]byte, error) {
@@ -21,6 +26,10 @@ func (c *DoHClient) RawQuery(query []byte) ([]byte, error) {
 	)
 	if err != nil {
 		return nil, err
+	}
+	if r.StatusCode != 200 {
+		log.Printf("response: %#v", r)
+		return nil, ErrResolver
 	}
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
@@ -33,17 +42,25 @@ func (c *DoHClient) RawQuery(query []byte) ([]byte, error) {
 var dohClient = &DoHClient{}
 
 func main() {
-	query := []byte{
-		0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
-		0x07, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65,
-		0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x01, 0x00,
-		0x01,
-	}
-	log.Printf("query: %#v", query)
-	body, err := dohClient.RawQuery(query)
+	ln, err := net.ListenUDP("udp", &net.UDPAddr{Port: 1253})
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("body: %#v", body)
+	defer ln.Close()
+
+	query := make([]byte, 128)
+	n, _, _, addr, err := ln.ReadMsgUDP(query, nil)
+	if err != nil {
+		panic(err)
+	}
+	query = query[:n]
+
+	resp, err := dohClient.RawQuery(query)
+	if err != nil {
+		panic(err)
+	}
+	_, _, err = ln.WriteMsgUDP(resp, nil, addr)
+	if err != nil {
+		panic(err)
+	}
 }
