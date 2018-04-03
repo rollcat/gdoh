@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 )
@@ -12,6 +13,7 @@ import (
 // DoHClient implements a DNS over HTTPS client.
 type DoHClient struct {
 	http.Client
+	Endpoints []string
 }
 
 // ErrResolver signifies an internal resolver error.
@@ -19,8 +21,9 @@ var ErrResolver = errors.New("Resolver error")
 
 // RawQuery performs a raw DNS query, using the wire format.
 func (c *DoHClient) RawQuery(query []byte) ([]byte, error) {
+	endpoint := c.Endpoints[rand.Int()%len(c.Endpoints)]
 	r, err := c.Client.Post(
-		"https://1.1.1.1/dns-query",
+		endpoint,
 		"application/dns-udpwireformat",
 		bytes.NewBuffer(query),
 	)
@@ -39,7 +42,12 @@ func (c *DoHClient) RawQuery(query []byte) ([]byte, error) {
 	return body, nil
 }
 
-var dohClient = &DoHClient{}
+var dohClient = &DoHClient{
+	Endpoints: []string{
+		"https://1.0.0.1/dns-query",
+		"https://1.1.1.1/dns-query",
+	},
+}
 
 func main() {
 	ln, err := net.ListenUDP("udp", &net.UDPAddr{Port: 1253})
