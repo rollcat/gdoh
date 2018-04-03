@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -49,11 +50,19 @@ var dohClient = &DoHClient{
 	},
 }
 
+var listen = flag.String("listen", ":53", "UDP address to listen on")
+
 func main() {
-	ln, err := net.ListenUDP("udp", &net.UDPAddr{Port: 1253})
+	flag.Parse()
+	laddr, err := net.ResolveUDPAddr("udp", *listen)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+	ln, err := net.ListenUDP("udp", laddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Listening on %s", laddr.String())
 	defer ln.Close()
 
 	for {
