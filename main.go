@@ -56,19 +56,24 @@ func main() {
 	}
 	defer ln.Close()
 
-	query := make([]byte, 128)
-	n, _, _, addr, err := ln.ReadMsgUDP(query, nil)
-	if err != nil {
-		panic(err)
-	}
-	query = query[:n]
+	for {
+		query := make([]byte, 128)
+		n, _, _, addr, err := ln.ReadMsgUDP(query, nil)
+		if err != nil {
+			log.Print("read error:", err.Error())
+			continue
+		}
+		query = query[:n]
 
-	resp, err := dohClient.RawQuery(query)
-	if err != nil {
-		panic(err)
-	}
-	_, _, err = ln.WriteMsgUDP(resp, nil, addr)
-	if err != nil {
-		panic(err)
+		resp, err := dohClient.RawQuery(query)
+		if err != nil {
+			log.Print("query error:", err.Error())
+			// TODO: how to tell client we've got an error?
+			resp = []byte{0}
+		}
+		_, _, err = ln.WriteMsgUDP(resp, nil, addr)
+		if err != nil {
+			log.Print("write error:", err.Error())
+		}
 	}
 }
