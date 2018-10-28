@@ -53,6 +53,9 @@ var dohClient = &DoHClient{
 var listen = flag.String("listen", ":53", "UDP address to listen on")
 
 func main() {
+	if len(dohClient.Endpoints) == 0 {
+		log.Fatal("No endpoints configured")
+	}
 	flag.Parse()
 	laddr, err := net.ResolveUDPAddr("udp", *listen)
 	if err != nil {
